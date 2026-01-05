@@ -24,10 +24,14 @@ const DriverOnboardingManagement: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
-    if (profile?.organization_id) {
-      loadData();
+    if (profile) {
+      if (profile.organization_id) {
+        loadData();
+      } else {
+        setLoading(false);
+      }
     }
-  }, [profile?.organization_id]);
+  }, [profile?.id, profile?.organization_id]);
 
   const loadData = async () => {
     try {
@@ -144,6 +148,21 @@ const DriverOnboardingManagement: React.FC = () => {
       </div>
 
       {error && <ErrorMessage message={error} onDismiss={() => setError('')} />}
+
+      {!profile?.organization_id && (
+        <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <Clock className="h-5 w-5 text-yellow-400" aria-hidden="true" />
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-yellow-700">
+                No organization associated with your profile. Please refresh or contact support to have an organization assigned to your account.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((stat) => {

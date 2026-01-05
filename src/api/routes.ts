@@ -145,9 +145,29 @@ export async function optimizeRoute(waypoints: Array<{ lat: number; lng: number;
   estimatedDuration: number;
   optimizationScore: number;
 }> {
-  const optimized = [...waypoints].sort((a, b) => {
-    return Math.abs(a.lat - 40.7128) - Math.abs(b.lat - 40.7128);
-  });
+  if (waypoints.length === 0) {
+    return { optimizedWaypoints: [], totalDistance: 0, estimatedDuration: 0, optimizationScore: 0 };
+  }
+
+  // Nearest Neighbor Algorithm
+  const optimized = [];
+  const unvisited = [...waypoints];
+  let current = unvisited.shift()!;
+  optimized.push(current);
+
+  while (unvisited.length > 0) {
+    let nearestIdx = 0;
+    let minDistance = Infinity;
+    for (let i = 0; i < unvisited.length; i++) {
+      const d = Math.sqrt(Math.pow(current.lat - unvisited[i].lat, 2) + Math.pow(current.lng - unvisited[i].lng, 2));
+      if (d < minDistance) {
+        minDistance = d;
+        nearestIdx = i;
+      }
+    }
+    current = unvisited.splice(nearestIdx, 1)[0];
+    optimized.push(current);
+  }
 
   const optimizedWithSequence = optimized.map((wp, index) => ({
     ...wp,
@@ -161,7 +181,7 @@ export async function optimizeRoute(waypoints: Array<{ lat: number; lng: number;
     const lat2 = optimized[i + 1].lat;
     const lon2 = optimized[i + 1].lng;
 
-    const R = 3959;
+    const R = 3959; // Earth's radius in miles
     const dLat = ((lat2 - lat1) * Math.PI) / 180;
     const dLon = ((lon2 - lon1) * Math.PI) / 180;
     const a =
@@ -174,8 +194,8 @@ export async function optimizeRoute(waypoints: Array<{ lat: number; lng: number;
     totalDistance += R * c;
   }
 
-  const averageSpeed = 45;
-  const estimatedDuration = (totalDistance / averageSpeed) * 60;
+  const averageSpeed = 45; // mph
+  const estimatedDuration = (totalDistance / averageSpeed) * 60; // minutes
 
   const baselineDistance = totalDistance * 1.15;
   const savings = ((baselineDistance - totalDistance) / baselineDistance) * 100;

@@ -62,7 +62,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('user_profiles')
         .select(`
           *,
@@ -83,20 +83,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         // If user doesn't have an organization, create one
         if (!data.organization_id) {
-          logDebug('User missing organization_id, creating one...');
+          logInfo(`User ${userId} missing organization_id, attempting to create one via RPC...`);
           try {
             const { data: orgId, error: orgError } = await supabase
               .rpc('create_organization_for_user', { target_user_id: userId });
 
             if (orgError) {
-              logError('Error creating organization', orgError);
+              logError('RPC create_organization_for_user failed', orgError);
+              // We continue so the user at least gets their profile without an org
             } else {
-              logInfo('Successfully created organization', { orgId });
-              // Refetch profile to get the new organization
-              return fetchProfile(userId);
+              logInfo('Successfully created organization via RPC', { orgId });
+              // Refetch profile to get the new organization_id
+              const { data: updatedData } = await supabase
+                .from('user_profiles')
+                .select('*')
+                .eq('id', userId)
+                .maybeSingle();
+              
+              if (updatedData) {
+                logDebug('Refetched profile successfully after org creation');
+                data = updatedData;
+              }
             }
-          } catch (orgError) {
-            logError('Exception creating organization', orgError);
+          } catch (orgEx) {
+            logError('Exception during organization creation RPC', orgEx);
           }
         }
 

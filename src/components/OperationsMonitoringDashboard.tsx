@@ -182,7 +182,7 @@ const OperationsMonitoringDashboard: React.FC = () => {
           </div>
         </div>
 
-        {alerts.length > 0 && (
+        {alerts.length > 0 ? (
           <div className="bg-white rounded-lg shadow mb-8">
             <div className="p-6 border-b border-gray-200">
               <h2 className="text-xl font-bold text-gray-900">Active Alerts</h2>
@@ -198,25 +198,35 @@ const OperationsMonitoringDashboard: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <AlertCircle className="h-5 w-5" />
-                          <span className="font-semibold">{alert.service_name}</span>
-                          <span className="text-xs px-2 py-1 rounded bg-white">{alert.alert_type}</span>
+                          <span className="font-semibold text-lg">{alert.service_name}</span>
+                          <span className="text-xs px-2 py-0.5 rounded-full bg-white/50">
+                            {alert.alert_type}
+                          </span>
                         </div>
-                        <p className="text-sm mb-2">{alert.message}</p>
-                        <p className="text-xs opacity-75">
-                          Triggered: {new Date(alert.triggered_at).toLocaleString()}
-                        </p>
+                        <p className="opacity-90">{alert.message}</p>
                       </div>
-                      <button
-                        onClick={() => resolveAlert(alert.id)}
-                        className="ml-4 px-4 py-2 bg-white text-gray-700 rounded hover:bg-gray-50 text-sm font-medium"
-                      >
-                        Resolve
-                      </button>
+                      <div className="text-right ml-4">
+                        <span className="text-sm opacity-75 block whitespace-nowrap">
+                          {new Date(alert.triggered_at).toLocaleString()}
+                        </span>
+                        <button
+                          onClick={() => resolveAlert(alert.id)}
+                          className="mt-2 text-xs underline opacity-80 hover:opacity-100"
+                        >
+                          Resolve
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-8 text-center mb-8">
+            <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+            <h2 className="text-xl font-bold text-gray-900 mb-2">No Active Alerts</h2>
+            <p className="text-gray-600">All systems are currently operating normally.</p>
           </div>
         )}
 

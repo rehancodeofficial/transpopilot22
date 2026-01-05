@@ -89,7 +89,7 @@ export const driverAPI = {
   async create(input: CreateDriverInput): Promise<Driver> {
     const orgId = await getUserOrganizationId();
     if (!orgId) {
-      throw new Error('No organization found. Please contact support.');
+      throw new Error('Action failed: No organization is associated with your profile. Please refresh the page or contact support.');
     }
 
     const canAddDriver = await checkDriverLimit();
