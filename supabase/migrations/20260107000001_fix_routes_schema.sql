@@ -1,64 +1,95 @@
--- Migration to align 'routes' table with Frontend Code
--- Fixes "Failed to save route" (Missing columns)
+-- Comprehensive Fix: Align 'routes' and 'route_waypoints' with Frontend code requirements
+-- This script ensures all columns used by RouteOptimization.tsx and routes.ts exists
 
 DO $$
 BEGIN
-  -- 1. Ensure 'name' column exists (User schema had 'route_name')
+  -- 1. Fix 'routes' table columns
+  
+  -- Ensure 'name' exists (User's schema had 'route_name')
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'name') THEN
-    -- If route_name exists, rename it, otherwise add name
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'route_name') THEN
-        ALTER TABLE routes RENAME COLUMN route_name TO name;
+      ALTER TABLE routes RENAME COLUMN route_name TO name;
     ELSE
-        ALTER TABLE routes ADD COLUMN name text;
+      ALTER TABLE routes ADD COLUMN name text;
     END IF;
   END IF;
 
-  -- 2. Add 'description'
+  -- Add description
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'description') THEN
     ALTER TABLE routes ADD COLUMN description text;
   END IF;
 
-  -- 3. Add 'status'
+  -- Add status (default 'planned')
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'status') THEN
     ALTER TABLE routes ADD COLUMN status text DEFAULT 'planned';
   END IF;
 
-  -- 4. Add 'optimization_score'
+  -- Add optimization_score
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'optimization_score') THEN
-    ALTER TABLE routes ADD COLUMN optimization_score numeric;
+    ALTER TABLE routes ADD COLUMN optimization_score decimal;
   END IF;
 
-  -- 5. Add 'estimated_distance'
+  -- Add estimated_distance (Frontend uses this)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'estimated_distance') THEN
-    ALTER TABLE routes ADD COLUMN estimated_distance numeric;
+    ALTER TABLE routes ADD COLUMN estimated_distance decimal;
   END IF;
 
-  -- 6. Add 'estimated_duration'
+  -- Add estimated_duration (Frontend uses this)
   IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'estimated_duration') THEN
-    ALTER TABLE routes ADD COLUMN estimated_duration numeric;
+    ALTER TABLE routes ADD COLUMN estimated_duration decimal;
   END IF;
 
-  -- 7. Ensure RLS allows insert (Fix "Failed to save" permission error)
-  -- Allow Authenticated users to insert routes if they belong to the org
-  DROP POLICY IF EXISTS "Users can insert routes for their org" ON routes;
-  CREATE POLICY "Users can insert routes for their org"
-  ON routes FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    organization_id IN (
-      SELECT organization_id FROM user_profiles WHERE id = auth.uid()
-    )
-  );
+  -- Add fuel_estimate (Frontend uses this)
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'routes' AND column_name = 'fuel_estimate') THEN
+    ALTER TABLE routes ADD COLUMN fuel_estimate decimal;
+  END IF;
+
+  -- 2. Create 'route_waypoints' table if it doesn't exist
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'route_waypoints' AND table_schema = 'public') THEN
+    CREATE TABLE public.route_waypoints (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      route_id uuid REFERENCES public.routes(id) ON DELETE CASCADE,
+      name text NOT NULL,
+      address text,
+      latitude decimal NOT NULL,
+      longitude decimal NOT NULL,
+      sequence_number integer NOT NULL,
+      status text DEFAULT 'pending',
+      created_at timestamp with time zone DEFAULT now()
+    );
+    
+    -- Enable RLS
+    ALTER TABLE public.route_waypoints ENABLE ROW LEVEL SECURITY;
+  END IF;
+
+  -- 3. Update RLS Policies for both tables
   
-  -- Allow Select
-  DROP POLICY IF EXISTS "Users can view routes for their org" ON routes;
-  CREATE POLICY "Users can view routes for their org"
-  ON routes FOR SELECT
-  TO authenticated
-  USING (
-    organization_id IN (
-      SELECT organization_id FROM user_profiles WHERE id = auth.uid()
-    )
-  );
+  -- Routes Select
+  DROP POLICY IF EXISTS "Users can view own organization routes" ON routes;
+  CREATE POLICY "Users can view own organization routes"
+    ON routes FOR SELECT
+    TO authenticated
+    USING (organization_id IN (SELECT organization_id FROM user_profiles WHERE id = auth.uid()));
+
+  -- Routes Insert
+  DROP POLICY IF EXISTS "Users can create routes for own organization" ON routes;
+  CREATE POLICY "Users can create routes for own organization"
+    ON routes FOR INSERT
+    TO authenticated
+    WITH CHECK (organization_id IN (SELECT organization_id FROM user_profiles WHERE id = auth.uid()));
+
+  -- Waypoints Select (via Route organization)
+  DROP POLICY IF EXISTS "Users can view own organization waypoints" ON route_waypoints;
+  CREATE POLICY "Users can view own organization waypoints"
+    ON route_waypoints FOR SELECT
+    TO authenticated
+    USING (route_id IN (SELECT id FROM routes));
+
+  -- Waypoints Insert (via Route organization)
+  DROP POLICY IF EXISTS "Users can create waypoints for own organization routes" ON route_waypoints;
+  CREATE POLICY "Users can create waypoints for own organization routes"
+    ON route_waypoints FOR INSERT
+    TO authenticated
+    WITH CHECK (route_id IN (SELECT id FROM routes));
 
 END $$;
