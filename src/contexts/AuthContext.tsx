@@ -89,8 +89,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               .rpc('create_organization_for_user', { target_user_id: userId });
 
             if (orgError) {
-              logError('RPC create_organization_for_user failed', orgError);
-              // We continue so the user at least gets their profile without an org
+              logError('RPC create_organization_for_user failed, attempting direct creation...', orgError);
+              
+              // Fallback: Direct creation if RPC fails (and RLS allows it)
+              try {
+                const orgName = 'My Organization'; // Default name
+                const slug = `org-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                
+                const { data: newOrg, error: createError } = await supabase
+                  .from('organizations')
+                  .insert({ 
+                    name: orgName, 
+                    slug: slug,
+                    subscription_tier: 'free' 
+                  })
+                  .select('id')
+                  .single();
+                
+                if (createError) throw createError;
+                
+                if (newOrg) {
+                    const { error: updateError } = await supabase
+                        .from('user_profiles')
+                        .update({ organization_id: newOrg.id, role: 'admin' })
+                        .eq('id', userId);
+                        
+                    if (updateError) throw updateError;
+                    
+                    logInfo('Successfully created organization via fallback direct calls', { orgId: newOrg.id });
+                    
+                     // Refetch profile to get the new organization_id
+                    const { data: updatedData } = await supabase
+                      .from('user_profiles')
+                      .select('*')
+                      .eq('id', userId)
+                      .maybeSingle();
+                    
+                    if (updatedData) {
+                      data = updatedData;
+                    }
+                }
+              } catch (fallbackError) {
+                  logError('Fallback organization creation failed', fallbackError);
+              }
+
             } else {
               logInfo('Successfully created organization via RPC', { orgId });
               // Refetch profile to get the new organization_id

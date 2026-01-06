@@ -68,10 +68,43 @@ async function verifyFixes() {
     .single();
 
   if (!profile?.organization_id) {
-      console.error('❌ Organization ID missing after wait. Fix might need RPC call check.');
-      // Attempt manual RPC fallback if your auth context logic relies on it
-      // const { data: orgId } = await supabase.rpc('create_organization_for_user', { target_user_id: user.id });
-      // console.log('RPC Manual Result:', orgId);
+      console.error('❌ Organization ID missing after wait.');
+      console.log('🛠️ Attempting Manual Fallback Creation (simulating AuthContext fix)...');
+      
+      try {
+        // 1. Create Org
+        const slug = `verify-${Date.now()}`;
+        const { data: newOrg, error: createError } = await supabase
+            .from('organizations')
+            .insert({ 
+                name: 'Verification Org', 
+                slug: slug,
+                subscription_tier: 'free' 
+            })
+            .select('id')
+            .single();
+
+        if (createError) {
+             console.error('❌ Fallback Org Creation Failed:', createError.message);
+        } else if (newOrg) {
+             console.log('✅ Fallback Org Created:', newOrg.id);
+             // 2. Update Profile
+             const { error: updateError } = await supabase
+                .from('user_profiles')
+                .update({ organization_id: newOrg.id, role: 'admin' })
+                .eq('id', user.id);
+            
+            if (updateError) {
+                console.error('❌ Fallback Profile Update Failed:', updateError.message);
+            } else {
+                console.log('✅ Fallback Profile Updated. Re-authenticating...');
+                // Re-login to refresh session claims if needed (though local client might need refresh)
+                // await supabase.auth.refreshSession(); 
+            }
+        }
+      } catch (e: any) {
+          console.error('❌ Fallback Exception:', e.message);
+      }
   } else {
       console.log('✅ Organization ID found:', profile.organization_id);
   }
