@@ -14,7 +14,7 @@ import LoadingSpinner from './LoadingSpinner';
 import ErrorMessage from './ErrorMessage';
 
 const DriverOnboardingManagement: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const [activeTab, setActiveTab] = useState('drivers');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -24,14 +24,19 @@ const DriverOnboardingManagement: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
 
   useEffect(() => {
+    if (authLoading) return;
+
     if (profile) {
       if (profile.organization_id) {
         loadData();
       } else {
         setLoading(false);
       }
+    } else {
+      // Not authenticated or no profile yet
+      setLoading(false);
     }
-  }, [profile?.id, profile?.organization_id]);
+  }, [profile?.id, profile?.organization_id, authLoading]);
 
   const loadData = async () => {
     try {

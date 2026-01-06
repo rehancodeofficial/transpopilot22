@@ -44,9 +44,26 @@ export async function getRouteById(id: string): Promise<Route | null> {
 }
 
 export async function createRoute(route: Omit<Route, 'id' | 'created_at'>): Promise<Route> {
+  const routeToCreate = { ...route };
+  
+  // Fallback: fetch organization_id if not provided
+  if (!routeToCreate.organization_id) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+      if (profile?.organization_id) {
+        routeToCreate.organization_id = profile.organization_id;
+      }
+    }
+  }
+
   const { data, error } = await supabase
     .from('routes')
-    .insert(route)
+    .insert(routeToCreate)
     .select()
     .single();
 

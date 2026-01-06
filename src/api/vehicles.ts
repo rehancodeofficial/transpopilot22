@@ -96,7 +96,10 @@ export const vehicleAPI = {
       .select()
       .single();
 
-    if (error) handleSupabaseError(error, 'create vehicle');
+    if (error) {
+      console.error('Error creating vehicle:', error);
+      handleSupabaseError(error, 'create vehicle');
+    }
     return data;
   },
 

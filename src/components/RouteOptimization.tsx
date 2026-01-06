@@ -20,7 +20,7 @@ import { Route, RouteWaypoint } from '../types/tracking';
 import { useAuth } from '../contexts/AuthContext';
 
 const RouteOptimization: React.FC = () => {
-  const { profile } = useAuth();
+  const { profile, loading: authLoading } = useAuth();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -132,6 +132,16 @@ const RouteOptimization: React.FC = () => {
   const handleSaveRoute = async () => {
     if (!newRouteName.trim()) {
       alert('Please enter a route name');
+      return;
+    }
+
+    if (authLoading) {
+      alert('Please wait for authentication to complete');
+      return;
+    }
+
+    if (!profile?.organization_id) {
+      alert('Organization ID is missing. Please contact support or try refreshing the page.');
       return;
     }
 
@@ -508,7 +518,7 @@ const RouteOptimization: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveRoute}
-                disabled={!optimizationResult}
+                disabled={!optimizationResult || authLoading || !profile?.organization_id}
                 className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
               >
                 <Save className="h-4 w-4" />
