@@ -25,8 +25,9 @@ async function verifyFixes() {
   console.log('🚀 Starting Verification Script...');
 
   // 1. Authenticate (using a test account)
-  const email = `test.verify.${Date.now()}@gmail.com`;
-  const password = 'testpassword123';
+  const randomStr = Math.random().toString(36).substring(2, 7);
+  const email = `verify.${randomStr}${Date.now()}@test-org-verifier.com`;
+  const password = 'TestPassword123!';
   
   console.log(`🔐 Creating test account: ${email}`);
   
