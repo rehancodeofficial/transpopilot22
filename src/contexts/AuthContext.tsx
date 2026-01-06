@@ -82,26 +82,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (data) {
         // If user doesn't have an organization, create one
-        if (!data.organization_id) {
-          logInfo(`User ${userId} missing organization_id, attempting to create one via RPC...`);
-          try {
-            const { data: orgId, error: orgError } = await supabase
-              .rpc('create_organization_for_user', { target_user_id: userId });
+      // We check for !data.organization_id explicitly
+      if (!data.organization_id) {
+        logInfo(`User ${userId} missing organization_id, attempting to create one via RPC...`);
+        try {
+          const { data: orgId, error: orgError } = await supabase
+            .rpc('create_organization_for_user', { target_user_id: userId });
 
-            if (orgError) {
-              logError('RPC create_organization_for_user failed', orgError);
-              // We continue so the user at least gets their profile without an org
-            } else {
-              logInfo('Successfully created organization via RPC', { orgId });
-              // Refetch profile to get the new organization_id
-              const { data: updatedData } = await supabase
-                .from('user_profiles')
-                .select('*')
-                .eq('id', userId)
-                .maybeSingle();
+          if (orgError) {
+            logError('RPC create_organization_for_user failed', orgError);
+            // We continue so the user at least gets their profile without an org
+          } else {
+            logInfo('Successfully created organization via RPC', { orgId });
+            // FORCE Refetch profile to get the new organization_id immediately
+            const { data: newData, error: newError } = await supabase
+              .from('user_profiles')
+              .select(`
+                *,
+                organization:organizations(
+                  id,
+                  name,
+                  subscription_tier
+                )
+              `)
+              .eq('id', userId)
+              .single();
               
-              if (updatedData) {
-                logDebug('Refetched profile successfully after org creation');
                 data = updatedData;
               }
             }

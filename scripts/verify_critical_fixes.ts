@@ -68,12 +68,32 @@ async function verifyFixes() {
     .single();
 
   if (!profile?.organization_id) {
-      console.error('❌ Organization ID missing after wait. Fix might need RPC call check.');
-      // Attempt manual RPC fallback if your auth context logic relies on it
-      // const { data: orgId } = await supabase.rpc('create_organization_for_user', { target_user_id: user.id });
-      // console.log('RPC Manual Result:', orgId);
+      console.error('❌ Organization ID missing after wait. Attempting RPC fallback...');
+      
+      try {
+        const { data: orgId, error: rpcError } = await supabase.rpc('create_organization_for_user', { target_user_id: user.id });
+        
+        if (rpcError) {
+             console.error('❌ RPC create_organization_for_user Failed:', rpcError);
+        } else {
+             console.log('✅ RPC create_organization_for_user Succeeded. Org ID:', orgId);
+             // Re-fetch profile to confirm
+             const { data: newProfile } = await supabase
+                .from('user_profiles')
+                .select('organization_id')
+                .eq('id', user.id)
+                .single();
+             if (newProfile?.organization_id) {
+                 console.log('✅ Profile updated with Org ID:', newProfile.organization_id);
+             } else {
+                 console.error('❌ Profile STILL missing Org ID after successful RPC?');
+             }
+        }
+      } catch (e: any) {
+          console.error('❌ Exception calling RPC:', e.message);
+      }
   } else {
-      console.log('✅ Organization ID found:', profile.organization_id);
+      console.log('✅ Organization ID found (Trigger worked):', profile.organization_id);
   }
 
   // Login to set session for client (supabase client keeps state in memory)
