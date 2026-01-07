@@ -4,8 +4,6 @@ import {
   AlertTriangle, 
   CheckCircle, 
   Clock, 
-  FileText, 
-  Calendar,
   TrendingUp,
   TrendingDown,
   Award,
@@ -142,7 +140,34 @@ const SafetyCompliance: React.FC = () => {
           <p className="text-gray-600">Monitor safety performance and regulatory compliance</p>
         </div>
         <div className="flex items-center space-x-3">
-          <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
+          <button 
+            onClick={() => {
+              // Simulate report generation
+              const reportData = {
+                timestamp: new Date().toISOString(),
+                stats: safetyStats,
+                incidents: recentIncidents,
+                compliance: complianceItems
+              };
+              
+              // In a real app, this would call an API
+              console.log('Generating report with data:', reportData);
+              
+              // Create a dummy download
+              const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = `safety-report-${new Date().toISOString().split('T')[0]}.json`;
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+              URL.revokeObjectURL(url);
+              
+              alert('Report generated and downloaded successfully!');
+            }}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
             Generate Report
           </button>
         </div>
