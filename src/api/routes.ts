@@ -44,7 +44,14 @@ export async function getRouteById(id: string): Promise<Route | null> {
 }
 
 export async function createRoute(route: Omit<Route, 'id' | 'created_at'>): Promise<Route> {
-  const routeToCreate = { ...route };
+  const routeToCreate: any = { ...route };
+
+  // Ensure legacy columns are populated to satisfy DB constraints
+  if (routeToCreate.estimated_distance !== undefined) {
+    routeToCreate.distance_miles = routeToCreate.estimated_distance;
+  } else {
+    routeToCreate.distance_miles = 0;
+  }
   
   // Fallback: fetch organization_id if not provided
   if (!routeToCreate.organization_id) {

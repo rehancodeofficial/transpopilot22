@@ -111,7 +111,7 @@ const RouteOptimization: React.FC = () => {
   };
 
   const handleOptimizeRoute = async () => {
-    const validWaypoints = waypoints.filter((wp) => wp.name && wp.lat && wp.lng);
+    const validWaypoints = waypoints.filter((wp) => wp.name?.trim() && typeof wp.lat === 'number' && typeof wp.lng === 'number');
     if (validWaypoints.length < 2) {
       alert('Please add at least 2 valid waypoints to optimize');
       return;
@@ -145,28 +145,48 @@ const RouteOptimization: React.FC = () => {
       return;
     }
 
-    if (!optimizationResult) {
-      alert('Please optimize the route first');
+    const validWaypoints = waypoints.filter((wp) => wp.name?.trim() && typeof wp.lat === 'number' && typeof wp.lng === 'number');
+    if (validWaypoints.length < 2) {
+      alert('Please add at least 2 valid waypoints with name, latitude, and longitude');
       return;
     }
 
     try {
-      const route = await createRoute({
+      // Use optimization results if available, otherwise use basic waypoint data
+      let routeData: any = {
         name: newRouteName,
         description: newRouteDescription,
         status: 'planned',
         organization_id: profile?.organization_id,
-        optimization_score: optimizationResult.optimizationScore,
-        estimated_distance: optimizationResult.totalDistance,
-        estimated_duration: optimizationResult.estimatedDuration,
-      });
+        origin: validWaypoints[0].name, // First waypoint is the origin
+        destination: validWaypoints[validWaypoints.length - 1].name, // Last waypoint is the destination
+      };
 
-      for (const wp of optimizationResult.optimizedWaypoints) {
+      let waypointsToSave = validWaypoints;
+
+      if (optimizationResult) {
+        // Route was optimized - use optimization data
+        routeData.optimization_score = optimizationResult.optimizationScore;
+        routeData.estimated_distance = optimizationResult.totalDistance;
+        routeData.estimated_duration = optimizationResult.estimatedDuration;
+        waypointsToSave = optimizationResult.optimizedWaypoints;
+      } else {
+        // Route not optimized - calculate basic estimates
+        routeData.optimization_score = 0;
+        routeData.estimated_distance = 0;
+        routeData.estimated_duration = 0;
+      }
+
+      const route = await createRoute(routeData);
+
+      // Save waypoints
+      for (let i = 0; i < waypointsToSave.length; i++) {
+        const wp = waypointsToSave[i];
         await createWaypoint({
           route_id: route.id,
-          sequence_number: wp.sequence,
+          sequence_number: (wp as any).sequence || i + 1,
           name: wp.name,
-          address: '',
+          address: (wp as any).address || '',
           latitude: wp.lat,
           longitude: wp.lng,
           status: 'pending',
@@ -201,6 +221,26 @@ const RouteOptimization: React.FC = () => {
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
+  };
+
+  const canSaveRoute = () => {
+    if (!newRouteName.trim()) return false;
+    const validWaypoints = waypoints.filter((wp) => wp.name?.trim() && typeof wp.lat === 'number' && typeof wp.lng === 'number');
+    return validWaypoints.length >= 2;
+  };
+
+  const getValidationMessage = () => {
+    if (!newRouteName.trim()) {
+      return '⚠️ Enter a route name to continue';
+    }
+    const validWaypoints = waypoints.filter((wp) => wp.name?.trim() && typeof wp.lat === 'number' && typeof wp.lng === 'number');
+    if (validWaypoints.length < 2) {
+      return `⚠️ Add at least 2 waypoints to save (currently have ${validWaypoints.length})`;
+    }
+    if (!optimizationResult) {
+      return '💡 Route ready to save! (Tip: Optimize for better efficiency)';
+    }
+    return '✅ Route optimized and ready to save!';
   };
 
   return (
@@ -518,12 +558,17 @@ const RouteOptimization: React.FC = () => {
               </button>
               <button
                 onClick={handleSaveRoute}
-                disabled={!optimizationResult || authLoading || !profile?.organization_id}
-                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+                disabled={!canSaveRoute() || authLoading || !profile?.organization_id}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Save className="h-4 w-4" />
                 <span>Save Route</span>
               </button>
+            </div>
+            <div className="px-6 pb-3 text-center">
+              <p className="text-sm font-medium" style={{ color: !canSaveRoute() ? '#f59e0b' : '#10b981' }}>
+                {getValidationMessage()}
+              </p>
             </div>
           </div>
         </div>
