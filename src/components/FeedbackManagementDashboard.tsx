@@ -85,14 +85,14 @@ const FeedbackManagementDashboard: React.FC = () => {
     }
   };
 
-  if (!isSuperAdmin()) {
+  if (!isAdmin()) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-xl shadow-lg p-8 max-w-md text-center">
           <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
           <p className="text-gray-600">
-            You need super administrator privileges to access this page.
+            You need administrator privileges to access this page.
           </p>
         </div>
       </div>
