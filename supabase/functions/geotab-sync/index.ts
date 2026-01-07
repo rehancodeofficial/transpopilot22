@@ -36,11 +36,32 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: credentials } = await supabase
-      .from("integration_credentials")
-      .select("*")
-      .eq("provider_id", provider.id)
-      .maybeSingle();
+    // ... (existing provider check)
+
+    let credentials = null;
+
+    // Check if credentials are provided in the request body (for testing)
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body.credentials) {
+          credentials = body.credentials;
+        }
+      } catch (e) {
+        // Ignore JSON parse errors, fallback to DB
+      }
+    }
+
+    // If not in body, fetch from DB
+    if (!credentials) {
+      const { data: dbCredentials } = await supabase
+        .from("integration_credentials")
+        .select("*")
+        .eq("provider_id", provider.id)
+        .maybeSingle();
+      
+      credentials = dbCredentials;
+    }
 
     if (!credentials) {
       return new Response(JSON.stringify({ error: "Geotab credentials not configured" }), {

@@ -175,14 +175,17 @@ export async function testIntegrationConnection(
       return { success: false, message: 'Unknown provider' };
     }
 
+    const hasCredentials = credentials && Object.keys(credentials).length > 0;
+    
     const response = await fetch(
       `${supabaseUrl}/functions/v1/${functionName}?action=test`,
       {
-        method: 'GET',
+        method: hasCredentials ? 'POST' : 'GET',
         headers: {
           'Authorization': `Bearer ${supabaseKey}`,
           'Content-Type': 'application/json',
         },
+        body: hasCredentials ? JSON.stringify({ credentials }) : undefined,
       }
     );
 
