@@ -36,11 +36,28 @@ Deno.serve(async (req: Request) => {
       });
     }
 
-    const { data: credentials } = await supabase
-      .from("integration_credentials")
-      .select("*")
-      .eq("provider_id", provider.id)
-      .maybeSingle();
+    let credentials = null;
+
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        if (body.credentials) {
+          credentials = body.credentials;
+        }
+      } catch (e) {
+        // Ignore JSON parse errors
+      }
+    }
+
+    if (!credentials) {
+      const { data: dbCredentials } = await supabase
+        .from("integration_credentials")
+        .select("*")
+        .eq("provider_id", provider.id)
+        .maybeSingle();
+      
+      credentials = dbCredentials;
+    }
 
     if (!credentials) {
       return new Response(JSON.stringify({ error: "Custom telematics credentials not configured" }), {

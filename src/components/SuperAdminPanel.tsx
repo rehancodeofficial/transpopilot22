@@ -17,7 +17,7 @@ const SuperAdminPanel: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
-    if (isSuperAdmin()) {
+    if (isSuperAdmin() || sessionStorage.getItem('super_admin_authenticated') === 'true') {
       fetchGlobalStats();
     }
   }, []);
@@ -58,7 +58,7 @@ const SuperAdminPanel: React.FC = () => {
     }
   };
 
-  if (!isSuperAdmin()) {
+  if (!isSuperAdmin() && sessionStorage.getItem('super_admin_authenticated') !== 'true') {
     return (
       <div className="p-6">
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">

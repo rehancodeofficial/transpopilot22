@@ -5,7 +5,6 @@ import {
   Fuel,
   Shield,
   Users,
-  Users,
   Menu,
   X,
   Bell,
@@ -65,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
     { id: 'fleet-manager-dashboard', name: 'Fleet Operations', icon: BarChart3, section: 'admin', gradient: 'from-blue-500 to-blue-700', hoverGradient: 'from-blue-600 to-blue-800', shadowColor: 'shadow-blue-500/50', requiresAuth: true, fleetManagerOnly: true, mobileVisible: false },
     { id: 'admin-dashboard', name: 'Admin Dashboard', icon: ShieldCheck, section: 'admin', gradient: 'from-indigo-500 to-purple-600', hoverGradient: 'from-indigo-600 to-purple-700', shadowColor: 'shadow-indigo-500/50', requiresAuth: true, adminOnly: true, mobileVisible: false },
     { id: 'super-admin-panel', name: 'Super Admin Panel', icon: ShieldCheck, section: 'admin', gradient: 'from-violet-500 to-purple-700', hoverGradient: 'from-violet-600 to-purple-800', shadowColor: 'shadow-violet-500/50', requiresAuth: true, superAdminOnly: true, mobileVisible: false },
-    { id: 'operations-monitoring', name: 'Operations Monitoring', icon: Activity, section: 'admin', gradient: 'from-cyan-500 to-blue-600', hoverGradient: 'from-cyan-600 to-blue-700', shadowColor: 'shadow-cyan-500/50', requiresAuth: true, adminOnly: true, requiresEnterprise: true, mobileVisible: false },
+    { id: 'operations-monitoring', name: 'Operations Monitoring', icon: Activity, section: 'admin', gradient: 'from-cyan-500 to-blue-600', hoverGradient: 'from-cyan-600 to-blue-700', shadowColor: 'shadow-cyan-500/50', requiresAuth: true, adminOnly: true, mobileVisible: false },
     { id: 'production-monitoring', name: 'Production Monitoring', icon: Activity, section: 'admin', gradient: 'from-violet-500 to-purple-600', hoverGradient: 'from-violet-600 to-purple-700', shadowColor: 'shadow-violet-500/50', requiresAuth: true, adminOnly: true, mobileVisible: false },
     { id: 'feedback-management', name: 'Feedback Management', icon: MessageSquare, section: 'admin', gradient: 'from-pink-500 to-rose-600', hoverGradient: 'from-pink-600 to-rose-700', shadowColor: 'shadow-pink-500/50', requiresAuth: true, adminOnly: true, mobileVisible: false },
     { id: 'customer-success', name: 'Customer Success', icon: Building2, section: 'system', gradient: 'from-emerald-500 to-green-600', hoverGradient: 'from-emerald-600 to-green-700', shadowColor: 'shadow-emerald-500/50', requiresAuth: true, mobileVisible: false },
@@ -129,7 +128,7 @@ const Layout: React.FC<LayoutProps> = ({ children, activeTab, onTabChange }) => 
     filteredNavigation.some(item => item.section === section.id)
   );
 
-  const totalFeatures = navigation.filter(item => item.requiresAuth).length;
+  const mobileFeatures = filteredNavigation.filter(item => (item as any).mobileVisible !== false).length;
 
   return (
     <div className="min-h-screen bg-gray-50">

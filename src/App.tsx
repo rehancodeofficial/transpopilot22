@@ -37,7 +37,7 @@ import { isSupabaseConfigured } from './lib/supabase';
 
 const AppContent: React.FC = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const { isAdmin, isSuperAdmin, user, isGuestMode } = useAuth();
+  const { isAdmin, isSuperAdmin, user } = useAuth();
 
   const integrationConfig = {
     apiKey: 'demo-api-key-12345',
@@ -109,7 +109,7 @@ const AppContent: React.FC = () => {
         }
         return <AdminDashboardPage />;
       case 'super-admin-panel':
-        if (!user || !isSuperAdmin()) {
+        if (!user || (!isSuperAdmin() && sessionStorage.getItem('super_admin_authenticated') !== 'true')) {
           return (
             <div className="p-6">
               <div className="bg-red-50 border border-red-200 rounded-lg p-6">

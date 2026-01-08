@@ -363,48 +363,69 @@ export async function rejectDocument(
 
 // Admin: Get all drivers in onboarding
 export async function getAllDriversInOnboarding(organizationId: string) {
-  const { data, error } = await supabase
+  // WORKAROUND: Fetching data in separate queries to avoid "Relationship not found" schema cache errors
+  const { data: progressData, error: progressError } = await supabase
     .from('driver_onboarding_progress')
-    .select(`
-      *,
-      drivers:driver_id (
-        id,
-        first_name,
-        last_name,
-        email,
-        status
-      )
-    `)
+    .select('*')
     .eq('organization_id', organizationId)
     .order('created_at', { ascending: false });
 
-  if (error) throw error;
-  return data || [];
+  if (progressError) throw progressError;
+  if (!progressData || progressData.length === 0) return [];
+
+  // Fetch associated drivers
+  const driverIds = progressData.map(p => p.driver_id).filter(Boolean);
+  const { data: driversData, error: driversError } = await supabase
+    .from('drivers')
+    .select('id, first_name, last_name, email, status')
+    .in('id', driverIds);
+
+  if (driversError) throw driversError;
+
+  // Map drivers by ID for quick lookup
+  const driversMap = new Map(driversData?.map(d => [d.id, d]));
+
+  // Join data in JS to maintain expected structure
+  return progressData.map(p => ({
+    ...p,
+    drivers: driversMap.get(p.driver_id)
+  }));
 }
 
 // Admin: Get pending documents for review
 export async function getPendingDocuments(organizationId: string) {
-  const { data, error } = await supabase
+  // WORKAROUND: Fetching data in separate queries to avoid "Relationship not found" schema cache errors
+  const { data: docsData, error: docsError } = await supabase
     .from('driver_documents')
-    .select(`
-      *,
-      drivers:driver_id (
-        id,
-        first_name,
-        last_name,
-        email
-      ),
-      document_requirements:document_requirement_id (
-        title,
-        document_type
-      )
-    `)
+    .select('*')
     .eq('organization_id', organizationId)
     .eq('approval_status', 'pending')
     .order('uploaded_at', { ascending: true });
 
-  if (error) throw error;
-  return data || [];
+  if (docsError) throw docsError;
+  if (!docsData || docsData.length === 0) return [];
+
+  // Fetch associated drivers and requirements
+  const driverIds = Array.from(new Set(docsData.map(d => d.driver_id).filter(Boolean)));
+  const reqIds = Array.from(new Set(docsData.map(d => d.document_requirement_id).filter(Boolean)));
+
+  const [driversRes, reqsRes] = await Promise.all([
+    supabase.from('drivers').select('id, first_name, last_name, email').in('id', driverIds),
+    supabase.from('document_requirements').select('id, title, document_type').in('id', reqIds)
+  ]);
+
+  if (driversRes.error) throw driversRes.error;
+  if (reqsRes.error) throw reqsRes.error;
+
+  const driversMap = new Map(driversRes.data?.map(d => [d.id, d]));
+  const reqsMap = new Map(reqsRes.data?.map(r => [r.id, r]));
+
+  // Join data in JS to maintain expected structure
+  return docsData.map(d => ({
+    ...d,
+    drivers: driversMap.get(d.driver_id),
+    document_requirements: reqsMap.get(d.document_requirement_id)
+  }));
 }
 
 // Calculate and update onboarding progress
